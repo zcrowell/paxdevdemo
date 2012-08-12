@@ -8,10 +8,14 @@ build
 eggs
 parts
 bin
+obj
 var
 sdist
 develop-eggs
 .installed.cfg
+# VS
+*.suo
+*.cachefile
 
 # Installer logs
 pip-log.txt
