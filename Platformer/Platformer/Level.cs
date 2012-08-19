@@ -50,6 +50,13 @@ namespace Platformer
         // Level game state.
         private Random random = new Random(354668); // Arbitrary, but constant seed
 
+        public TimeSpan TotalTimeLevelStarted
+        {
+            get { return totalTimeLevelStarted; }
+        }
+        private TimeSpan totalTimeLevelStarted;
+        private bool initializedLevelStartTime;
+
         public int Score
         {
             get { return score; }
@@ -96,6 +103,7 @@ namespace Platformer
             content = new ContentManager(serviceProvider, "Content");
 
             timeRemaining = TimeSpan.FromMinutes(2.0);
+
 
             LoadTiles(fileStream);
 
@@ -270,7 +278,11 @@ namespace Platformer
                 throw new NotSupportedException("A level may only have one starting point.");
 
             start = RectangleExtensions.GetBottomCenter(GetBounds(x, y));
-            player = new Player(this, start);
+
+            ReplayData replay = ReplayData.LoadRecordedData(0, 0);
+            
+            
+            player = new Player(this, start, replay);
 
             return new Tile(null, TileCollision.Passable);
         }
@@ -380,6 +392,13 @@ namespace Platformer
             AccelerometerState accelState,
             DisplayOrientation orientation)
         {
+            if (!initializedLevelStartTime)
+            {
+                totalTimeLevelStarted = gameTime.TotalGameTime;
+                initializedLevelStartTime = true;
+                Console.WriteLine(totalTimeLevelStarted.ToString());
+            }
+
             // Pause while the player is dead or time is expired.
             if (!Player.IsAlive || TimeRemaining == TimeSpan.Zero)
             {
@@ -401,19 +420,25 @@ namespace Platformer
                 UpdateGems(gameTime);
 
                 // Falling off the bottom of the level kills the player.
-                if (Player.BoundingRectangle.Top >= Height * Tile.Height)
-                    OnPlayerKilled(null);
+                for (int i = 0; i < Player.GhostPositions.Count; i++)
+                {
+                    if (Player.GetBoundingRectangle(Player.GhostPositions[i]).Top >= Height * Tile.Height)
+                        OnPlayerKilled(i, null);
+                }
 
                 UpdateEnemies(gameTime);
 
                 // The player has reached the exit if they are standing on the ground and
                 // his bounding rectangle contains the center of the exit tile. They can only
                 // exit when they have collected all of the gems.
-                if (Player.IsAlive &&
-                    Player.IsOnGround &&
-                    Player.BoundingRectangle.Contains(exit))
+                for (int i = 0; i < Player.GhostPositions.Count; i++)
                 {
-                    OnExitReached();
+                    if (Player.PlayerStates[i] == PlayerState.Alive &&
+                        Player.IsOnGround &&
+                        Player.GetBoundingRectangle(Player.GhostPositions[i]).Contains(exit))
+                    {
+                        OnExitReached(i);
+                    }
                 }
             }
 
@@ -433,7 +458,7 @@ namespace Platformer
 
                 gem.Update(gameTime);
 
-                if (gem.BoundingCircle.Intersects(Player.BoundingRectangle))
+                if (gem.BoundingCircle.Intersects(Player.GetBoundingRectangle(Player.GhostPositions[0])))
                 {
                     gems.RemoveAt(i--);
                     OnGemCollected(gem, Player);
@@ -451,9 +476,12 @@ namespace Platformer
                 enemy.Update(gameTime);
 
                 // Touching an enemy instantly kills the player
-                if (enemy.BoundingRectangle.Intersects(Player.BoundingRectangle))
+                for (int i = 0; i < Player.GhostPositions.Count; i++)
                 {
-                    OnPlayerKilled(enemy);
+                    if (enemy.BoundingRectangle.Intersects(Player.GetBoundingRectangle(Player.GhostPositions[i])))
+                    {
+                        OnPlayerKilled(i, enemy);
+                    }
                 }
             }
         }
@@ -477,19 +505,22 @@ namespace Platformer
         /// The enemy who killed the player. This is null if the player was not killed by an
         /// enemy, such as when a player falls into a hole.
         /// </param>
-        private void OnPlayerKilled(Enemy killedBy)
+        private void OnPlayerKilled(int playerIndex, Enemy killedBy)
         {
-            Player.OnKilled(killedBy);
+            Player.OnKilled(playerIndex, killedBy);
         }
 
         /// <summary>
         /// Called when the player reaches the level's exit.
         /// </summary>
-        private void OnExitReached()
+        private void OnExitReached(int playerIndex)
         {
-            Player.OnReachedExit();
-            exitReachedSound.Play();
-            reachedExit = true;
+            Player.OnReachedExit(playerIndex);
+            if (playerIndex == 0)
+            {
+                exitReachedSound.Play();
+                reachedExit = true;
+            }
         }
 
         /// <summary>

@@ -38,6 +38,7 @@ namespace Platformer
         private int levelIndex = -1;
         private Level level;
         private bool wasContinuePressed;
+        private bool wasSaveReplayPressed;
 
         // When the time remaining is less than the warning time, it blinks on the hud
         private static readonly TimeSpan WarningTime = TimeSpan.FromSeconds(30);
@@ -125,13 +126,15 @@ namespace Platformer
             accelerometerState = Accelerometer.GetState();
 
             // Exit the game when back is pressed.
-            if (gamePadState.Buttons.Back == ButtonState.Pressed)
+            if (gamePadState.Buttons.Back == ButtonState.Pressed || keyboardState.IsKeyDown(Keys.Escape))
                 Exit();
 
             bool continuePressed =
                 keyboardState.IsKeyDown(Keys.Space) ||
                 gamePadState.IsButtonDown(Buttons.A) ||
                 touchState.AnyTouch();
+            bool saveReplayPressed = keyboardState.IsKeyDown(Keys.Y) ||
+                gamePadState.IsButtonDown(Buttons.Y);
 
             // Perform the appropriate action to advance the game and
             // to get the player back to playing.
@@ -150,6 +153,14 @@ namespace Platformer
                 }
             }
 
+            // at the end of a level, let player save their replay
+            if (level.TimeRemaining == TimeSpan.Zero &&
+                !wasSaveReplayPressed && saveReplayPressed)
+            {
+                level.Player.ReplayData.SaveRecordedData(levelIndex);
+            }
+
+            wasSaveReplayPressed = saveReplayPressed;
             wasContinuePressed = continuePressed;
         }
 

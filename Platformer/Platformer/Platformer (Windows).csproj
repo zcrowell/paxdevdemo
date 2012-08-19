@@ -75,9 +75,12 @@
     <Compile Include="Circle.cs" />
     <Compile Include="Enemy.cs" />
     <Compile Include="Gem.cs" />
+    <Compile Include="PlayerState.cs" />
+    <Compile Include="ReplayData.cs" />
     <Compile Include="Level.cs" />
     <Compile Include="PlatformerGame.cs" />
     <Compile Include="Player.cs" />
+    <Compile Include="PlayerGhostData.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RectangleExtensions.cs" />
