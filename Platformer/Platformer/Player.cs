@@ -24,11 +24,19 @@ namespace Platformer
     {
 
         // Ghosts
+        private ReplayData ghostData;
+        public ReplayData GhostData
+        {
+            get { return ghostData; }
+        }
+
         private ReplayData replayData;
         public ReplayData ReplayData
         {
             get { return replayData; }
         }
+
+        
         
         // Animations
         private Animation idleAnimation;
@@ -57,20 +65,20 @@ namespace Platformer
         public bool IsAlive { get { return playerStates[0] != PlayerState.Dead; } }
 
         // Physics state
-        private List<Vector2> ghostPositions = new List<Vector2>(10);
-        public List<Vector2> GhostPositions
+        private List<Vector2> playerPositions = new List<Vector2>(10);
+        public List<Vector2> PlayerPositions
         {
             get
             {
-                return ghostPositions;
+                return playerPositions;
             }
         }
-        private List<Vector2> ghostVelocities = new List<Vector2>(10);
-        public List<Vector2> GhostVelocities
+        private List<Vector2> playerVelocities = new List<Vector2>(10);
+        public List<Vector2> PlayerVelocities
         {
             get
             {
-                return ghostVelocities;
+                return playerVelocities;
             }
         }
 
@@ -82,7 +90,7 @@ namespace Platformer
 
         public Vector2 Velocity
         {
-            get { return ghostVelocities[0]; }
+            get { return playerVelocities[0]; }
         }
 
         // Constants for controling horizontal movement
@@ -119,7 +127,6 @@ namespace Platformer
         private List<bool> isJumping = new List<bool>(10);
 
 
-        // multiplex?
         private Rectangle localBounds;
 
         
@@ -141,14 +148,18 @@ namespace Platformer
 
         public Player(Level level, Vector2 start, ReplayData replay)  
         {
-            this.replayData = replay;
 
-            this.ghostPositions = new List<Vector2>(replay.StreamCount);
-            for (int i = 0; i <= replay.StreamCount; i++)
+            
+            this.replayData = new ReplayData();
+
+            int positionsToCreate = (replay == null ? 0 : replay.StreamCount);
+            
+            this.ghostData = replay;
+            for (int i = 0; i <= positionsToCreate; i++)
             {
                 this.sprites.Add(new AnimationPlayer());
-                this.ghostPositions.Add(Vector2.Zero);
-                this.ghostVelocities.Add(Vector2.Zero);
+                this.playerPositions.Add(Vector2.Zero);
+                this.playerVelocities.Add(Vector2.Zero);
                 this.isOnGround.Add(true);
                 this.previousBottom.Add(0.0f);
                 this.jumpTime.Add(0.0f);
@@ -157,14 +168,13 @@ namespace Platformer
                 this.movement.Add(0.0f);
                 this.flips.Add(true);
                 this.playerStates.Add(PlayerState.Alive);
-
             }
-
+ 
             this.level = level;
 
             LoadContent();
 
-            Reset(start);
+            Reset(null, start);
         }
 
         
@@ -198,12 +208,17 @@ namespace Platformer
         /// Resets the player to life.
         /// </summary>
         /// <param name="position">The position to come to life at.</param>
-        public void Reset(Vector2 position)
+        public void Reset(GameTime gameTime, Vector2 position)
         {
-            for(int i=0;i<ghostPositions.Count;i++)
-                ghostPositions[i] = position;
-            for (int i = 0; i < ghostVelocities.Count; i++)
-                ghostVelocities[i] = Vector2.Zero;
+            if(gameTime != null)
+                this.replayData.NewPlayerInputStream(gameTime.TotalGameTime - level.TotalTimeLevelStarted);
+            else
+                this.replayData.NewPlayerInputStream(TimeSpan.Zero);
+
+            for(int i=0;i<playerPositions.Count;i++)
+                playerPositions[i] = position;
+            for (int i = 0; i < playerVelocities.Count; i++)
+                playerVelocities[i] = Vector2.Zero;
             
             for (int i = 0; i < sprites.Count; i++)
             {
@@ -235,13 +250,14 @@ namespace Platformer
             AccelerometerState accelState,
             DisplayOrientation orientation)
         {
+            
             GetInput(gameTime, keyboardState, gamePadState, touchState, accelState, orientation);
             
             for (int i = 0; i < isOnGround.Count; i++)
             {
                 if (playerStates[i] == PlayerState.Alive && isOnGround[i])
                 {
-                    if (Math.Abs(ghostVelocities[i].X) - 0.02f > 0)
+                    if (Math.Abs(playerVelocities[i].X) - 0.02f > 0)
                     {
                         playAnimationForSprite(i, runAnimation);
                     }
@@ -314,15 +330,18 @@ namespace Platformer
                 touchState.AnyTouch();
 
 
-            //replayData.RecordPlayerInput(gameTime.TotalGameTime - level.TotalTimeLevelStarted, movement[0], isJumping[0]);
+            replayData.RecordPlayerInput(gameTime.TotalGameTime - level.TotalTimeLevelStarted, movement[0], isJumping[0]);
 
-            List<PlayerGhostData> ghostInput = replayData.GetNextPlayerInputs(gameTime.TotalGameTime - level.TotalTimeLevelStarted);
-            for (int i = 0; i < ghostInput.Count; i++)
+            if (ghostData != null)
             {
-                if (playerStates[i + 1] == PlayerState.Alive)
+                List<PlayerGhostData> ghostInput = ghostData.GetNextPlayerInputs(gameTime.TotalGameTime - level.TotalTimeLevelStarted);
+                for (int i = 0; i < ghostInput.Count; i++)
                 {
-                    movement[i + 1] = ghostInput[i].Mouvement;
-                    isJumping[i + 1] = ghostInput[i].IsJumping;
+                    if (playerStates[i + 1] == PlayerState.Alive)
+                    {
+                        movement[i + 1] = ghostInput[i].Mouvement;
+                        isJumping[i + 1] = ghostInput[i].IsJumping;
+                    }
                 }
             }
 
@@ -335,42 +354,44 @@ namespace Platformer
         {
             float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            for (int i = 0; i < ghostPositions.Count; i++)
+            for (int i = 0; i < playerPositions.Count; i++)
             {
+                if (playerStates[i] != PlayerState.Alive)
+                    continue;
 
-                Vector2 previousPosition = ghostPositions[i];
+                Vector2 previousPosition = playerPositions[i];
                 
                 // Base velocity is a combination of horizontal movement control and
                 // acceleration downward due to gravity.
-                ghostVelocities[i] = new Vector2(ghostVelocities[i].X +  movement[i] * MoveAcceleration * elapsed,
-                        MathHelper.Clamp(ghostVelocities[i].Y + GravityAcceleration * elapsed, -MaxFallSpeed, MaxFallSpeed));
+                playerVelocities[i] = new Vector2(playerVelocities[i].X +  movement[i] * MoveAcceleration * elapsed,
+                        MathHelper.Clamp(playerVelocities[i].Y + GravityAcceleration * elapsed, -MaxFallSpeed, MaxFallSpeed));
 
 
-                ghostVelocities[i] = new Vector2(ghostVelocities[i].X, DoJump(ghostVelocities[i].Y, gameTime, i));
+                playerVelocities[i] = new Vector2(playerVelocities[i].X, DoJump(playerVelocities[i].Y, gameTime, i));
 
                 // Apply pseudo-drag horizontally.
                 if (isOnGround[i])
-                    ghostVelocities[i] = new Vector2(ghostVelocities[i].X * GroundDragFactor, ghostVelocities[i].Y);
+                    playerVelocities[i] = new Vector2(playerVelocities[i].X * GroundDragFactor, playerVelocities[i].Y);
                 else
-                    ghostVelocities[i] = new Vector2(ghostVelocities[i].X * AirDragFactor, ghostVelocities[i].Y);
+                    playerVelocities[i] = new Vector2(playerVelocities[i].X * AirDragFactor, playerVelocities[i].Y);
 
                 // Prevent the player from running faster than his top speed.            
-                ghostVelocities[i] = new Vector2(MathHelper.Clamp(ghostVelocities[i].X, -MaxMoveSpeed, MaxMoveSpeed), ghostVelocities[i].Y);
+                playerVelocities[i] = new Vector2(MathHelper.Clamp(playerVelocities[i].X, -MaxMoveSpeed, MaxMoveSpeed), playerVelocities[i].Y);
                 
 
                 // Apply velocity.
-                ghostPositions[i] = ghostPositions[i] + ghostVelocities[i] * elapsed;
-                ghostPositions[i] = new Vector2((float)Math.Round(ghostPositions[i].X), (float)Math.Round(ghostPositions[i].Y));
+                playerPositions[i] = playerPositions[i] + playerVelocities[i] * elapsed;
+                playerPositions[i] = new Vector2((float)Math.Round(playerPositions[i].X), (float)Math.Round(playerPositions[i].Y));
                 
                 // If the player is now colliding with the level, separate them.
                 HandleCollisions(i);
 
                 // If the collision stopped us from moving, reset the velocity to zero.
-                if (ghostPositions[i].X == previousPosition.X)
-                    ghostVelocities[i] = new Vector2(0, ghostVelocities[i].Y);
+                if (playerPositions[i].X == previousPosition.X)
+                    playerVelocities[i] = new Vector2(0, playerVelocities[i].Y);
 
-                if (ghostPositions[i].Y == previousPosition.Y)
-                    ghostVelocities[i] = new Vector2(ghostVelocities[i].X, 0);                
+                if (playerPositions[i].Y == previousPosition.Y)
+                    playerVelocities[i] = new Vector2(playerVelocities[i].X, 0);                
             }
         }
 
@@ -437,7 +458,7 @@ namespace Platformer
         private void HandleCollisions(int i)
         {
             // Get the player's bounding rectangle and find neighboring tiles.
-            Rectangle bounds = GetBoundingRectangle(ghostPositions[i]);
+            Rectangle bounds = GetBoundingRectangle(playerPositions[i]);
             int leftTile = (int)Math.Floor((float)bounds.Left / Tile.Width);
             int rightTile = (int)Math.Ceiling(((float)bounds.Right / Tile.Width)) - 1;
             int topTile = (int)Math.Floor((float)bounds.Top / Tile.Height);
@@ -477,19 +498,19 @@ namespace Platformer
                                 if (collision == TileCollision.Impassable || isOnGround[i])
                                 {
                                     // Resolve the collision along the Y axis.
-                                    ghostPositions[i] = new Vector2(ghostPositions[i].X, ghostPositions[i].Y + depth.Y);
+                                    playerPositions[i] = new Vector2(playerPositions[i].X, playerPositions[i].Y + depth.Y);
 
                                     // Perform further collisions with the new bounds.
-                                    bounds = GetBoundingRectangle(ghostPositions[i]);
+                                    bounds = GetBoundingRectangle(playerPositions[i]);
                                 }
                             }
                             else if (collision == TileCollision.Impassable) // Ignore platforms.
                             {
                                 // Resolve the collision along the X axis.
-                                ghostPositions[i] = new Vector2(ghostPositions[i].X + depth.X, ghostPositions[i].Y);
+                                playerPositions[i] = new Vector2(playerPositions[i].X + depth.X, playerPositions[i].Y);
 
                                 // Perform further collisions with the new bounds.
-                                bounds = GetBoundingRectangle(ghostPositions[i]);
+                                bounds = GetBoundingRectangle(playerPositions[i]);
                             }
                         }
                     }
@@ -509,10 +530,9 @@ namespace Platformer
         /// </param>
         public void OnKilled(int playerIndex, Enemy killedBy)
         {
+            playerStates[playerIndex] = PlayerState.Dead;
             if (playerIndex == 0)
             {
-                playerStates[playerIndex] = PlayerState.Dead;
-
                 if (killedBy != null)
                     killedSound.Play();
                 else
@@ -537,20 +557,22 @@ namespace Platformer
         public virtual void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {     
             // Draw player + ghosts
-            for (int i = 0; i < GhostPositions.Count; i++)
+            for (int i = 0; i < PlayerPositions.Count; i++)
             {
                 // Flip the sprite to face the way we are moving.
-                if (GhostVelocities[i].X > 0)
+                if (PlayerVelocities[i].X > 0)
                     flips[i] = true;
-                else if (GhostVelocities[i].X < 0)
+                else if (PlayerVelocities[i].X < 0)
                     flips[i] = false;
 
                 // because animation player is a struct, which is copied by value
                 // when access in a collection, we have to do this or draw will 
                 // modify the value without updating the one in the collection
+
                 AnimationPlayer sprite = sprites[i];
-                sprite.Draw(gameTime, spriteBatch, ghostPositions[i], flips[i] ? SpriteEffects.FlipHorizontally : SpriteEffects.None, i>0);
+                sprite.Draw(gameTime, spriteBatch, playerPositions[i], flips[i] ? SpriteEffects.FlipHorizontally : SpriteEffects.None, i > 0);
                 sprites[i] = sprite;
+
             }
             
             

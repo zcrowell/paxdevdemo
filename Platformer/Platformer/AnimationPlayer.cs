@@ -93,7 +93,7 @@ namespace Platformer
             Rectangle source = new Rectangle(FrameIndex * Animation.Texture.Height, 0, Animation.Texture.Height, Animation.Texture.Height);
 
 
-            Color tint = isGhost ? Color.Multiply(Color.White, 0.5f) : Color.White;
+            Color tint = isGhost ? Color.Multiply(Color.Purple, 0.4f) : Color.White;
             // Draw the current frame.
             spriteBatch.Draw(Animation.Texture, position, source, tint, 0.0f, Origin, 1.0f, spriteEffects, 0.0f);
         }

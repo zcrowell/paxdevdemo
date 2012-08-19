@@ -23,7 +23,7 @@ namespace Platformer
         private Vector2 origin;
         private SoundEffect collectedSound;
 
-        public const int PointValue = 30;
+        public const int PointValue = 200;
         public readonly Color Color = Color.Yellow;
 
         // The gem is animated from a base position along the Y axis.

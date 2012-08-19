@@ -32,6 +32,8 @@ namespace Platformer
         // The layer which entities are drawn on top of.
         private const int EntityLayer = 2;
 
+        private ReplayData replayData;
+
         // Entities in the level.
         public Player Player
         {
@@ -75,7 +77,7 @@ namespace Platformer
         }
         TimeSpan timeRemaining;
 
-        private const int PointsPerSecond = 5;
+        private const int PointsPerSecond = 100;
 
         // Level content.        
         public ContentManager Content
@@ -102,8 +104,9 @@ namespace Platformer
             // Create a new content manager to load content used just by this level.
             content = new ContentManager(serviceProvider, "Content");
 
-            timeRemaining = TimeSpan.FromMinutes(2.0);
+            replayData = ReplayData.LoadRecordedData(levelIndex);
 
+            timeRemaining = TimeSpan.FromSeconds(25);
 
             LoadTiles(fileStream);
 
@@ -278,11 +281,8 @@ namespace Platformer
                 throw new NotSupportedException("A level may only have one starting point.");
 
             start = RectangleExtensions.GetBottomCenter(GetBounds(x, y));
-
-            ReplayData replay = ReplayData.LoadRecordedData(0, 0);
             
-            
-            player = new Player(this, start, replay);
+            player = new Player(this, start, replayData);
 
             return new Tile(null, TileCollision.Passable);
         }
@@ -395,8 +395,13 @@ namespace Platformer
             if (!initializedLevelStartTime)
             {
                 totalTimeLevelStarted = gameTime.TotalGameTime;
-                initializedLevelStartTime = true;
-                Console.WriteLine(totalTimeLevelStarted.ToString());
+                initializedLevelStartTime = true;                
+            }
+
+            // record high score at the end of level 
+            if (Player.PlayerStates[0] == PlayerState.ReachedExit && TimeRemaining == TimeSpan.Zero)
+            {
+                Player.ReplayData.HighScore = this.Score;
             }
 
             // Pause while the player is dead or time is expired.
@@ -408,10 +413,12 @@ namespace Platformer
             else if (ReachedExit)
             {
                 // Animate the time being converted into points.
-                int seconds = (int)Math.Round(gameTime.ElapsedGameTime.TotalSeconds * 100.0f);
-                seconds = Math.Min(seconds, (int)Math.Ceiling(TimeRemaining.TotalSeconds));
-                timeRemaining -= TimeSpan.FromSeconds(seconds);
-                score += seconds * PointsPerSecond;
+                int milliSeconds = (int)Math.Round(gameTime.ElapsedGameTime.TotalMilliseconds * 100.0f);
+                milliSeconds = Math.Min(milliSeconds, (int)Math.Ceiling(TimeRemaining.TotalMilliseconds));
+
+                
+                timeRemaining -= TimeSpan.FromMilliseconds(milliSeconds);
+                score += (int)Math.Round(milliSeconds * (PointsPerSecond/1000.0));
             }
             else
             {
@@ -420,9 +427,9 @@ namespace Platformer
                 UpdateGems(gameTime);
 
                 // Falling off the bottom of the level kills the player.
-                for (int i = 0; i < Player.GhostPositions.Count; i++)
+                for (int i = 0; i < Player.PlayerPositions.Count; i++)
                 {
-                    if (Player.GetBoundingRectangle(Player.GhostPositions[i]).Top >= Height * Tile.Height)
+                    if (Player.GetBoundingRectangle(Player.PlayerPositions[i]).Top >= Height * Tile.Height)
                         OnPlayerKilled(i, null);
                 }
 
@@ -431,11 +438,11 @@ namespace Platformer
                 // The player has reached the exit if they are standing on the ground and
                 // his bounding rectangle contains the center of the exit tile. They can only
                 // exit when they have collected all of the gems.
-                for (int i = 0; i < Player.GhostPositions.Count; i++)
+                for (int i = 0; i < Player.PlayerPositions.Count; i++)
                 {
                     if (Player.PlayerStates[i] == PlayerState.Alive &&
                         Player.IsOnGround &&
-                        Player.GetBoundingRectangle(Player.GhostPositions[i]).Contains(exit))
+                        Player.GetBoundingRectangle(Player.PlayerPositions[i]).Contains(exit))
                     {
                         OnExitReached(i);
                     }
@@ -458,7 +465,7 @@ namespace Platformer
 
                 gem.Update(gameTime);
 
-                if (gem.BoundingCircle.Intersects(Player.GetBoundingRectangle(Player.GhostPositions[0])))
+                if (gem.BoundingCircle.Intersects(Player.GetBoundingRectangle(Player.PlayerPositions[0])))
                 {
                     gems.RemoveAt(i--);
                     OnGemCollected(gem, Player);
@@ -476,9 +483,9 @@ namespace Platformer
                 enemy.Update(gameTime);
 
                 // Touching an enemy instantly kills the player
-                for (int i = 0; i < Player.GhostPositions.Count; i++)
+                for (int i = 0; i < Player.PlayerPositions.Count; i++)
                 {
-                    if (enemy.BoundingRectangle.Intersects(Player.GetBoundingRectangle(Player.GhostPositions[i])))
+                    if (enemy.BoundingRectangle.Intersects(Player.GetBoundingRectangle(Player.PlayerPositions[i])))
                     {
                         OnPlayerKilled(i, enemy);
                     }
@@ -508,6 +515,12 @@ namespace Platformer
         private void OnPlayerKilled(int playerIndex, Enemy killedBy)
         {
             Player.OnKilled(playerIndex, killedBy);
+            // reset the ennemies but not for ghosts
+            if (playerIndex == 0)
+            {
+                foreach (Enemy enemy in enemies)
+                    enemy.Reset();
+            }
         }
 
         /// <summary>
@@ -526,9 +539,9 @@ namespace Platformer
         /// <summary>
         /// Restores the player to the starting point to try the level again.
         /// </summary>
-        public void StartNewLife()
+        public void StartNewLife(GameTime gameTime)
         {
-            Player.Reset(start);
+            Player.Reset(gameTime, start);
         }
 
         #endregion

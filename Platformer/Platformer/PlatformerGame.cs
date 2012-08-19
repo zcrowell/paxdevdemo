@@ -38,10 +38,9 @@ namespace Platformer
         private int levelIndex = -1;
         private Level level;
         private bool wasContinuePressed;
-        private bool wasSaveReplayPressed;
 
         // When the time remaining is less than the warning time, it blinks on the hud
-        private static readonly TimeSpan WarningTime = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan WarningTime = TimeSpan.FromSeconds(5);
 
         // We store our input states so that we only poll once per frame, 
         // then we use the same input state wherever needed
@@ -108,7 +107,7 @@ namespace Platformer
         protected override void Update(GameTime gameTime)
         {
             // Handle polling for our input and handling high-level input
-            HandleInput();
+            HandleInput(gameTime);
 
             // update our level, passing down the GameTime along with all of our input states
             level.Update(gameTime, keyboardState, gamePadState, touchState, 
@@ -117,7 +116,7 @@ namespace Platformer
             base.Update(gameTime);
         }
 
-        private void HandleInput()
+        private void HandleInput(GameTime gameTime)
         {
             // get all of our input states
             keyboardState = Keyboard.GetState();
@@ -142,25 +141,20 @@ namespace Platformer
             {
                 if (!level.Player.IsAlive)
                 {
-                    level.StartNewLife();
+                    level.StartNewLife(gameTime);
                 }
                 else if (level.TimeRemaining == TimeSpan.Zero)
                 {
-                    if (level.ReachedExit)
+                    if (level.ReachedExit) {
+                        if(level.Player.GhostData == null || level.Score > level.Player.GhostData.HighScore) {
+                            level.Player.ReplayData.SaveRecordedData(levelIndex);
+                        }
                         LoadNextLevel();
-                    else
+                    } else {
                         ReloadCurrentLevel();
+                    }
                 }
             }
-
-            // at the end of a level, let player save their replay
-            if (level.TimeRemaining == TimeSpan.Zero &&
-                !wasSaveReplayPressed && saveReplayPressed)
-            {
-                level.Player.ReplayData.SaveRecordedData(levelIndex);
-            }
-
-            wasSaveReplayPressed = saveReplayPressed;
             wasContinuePressed = continuePressed;
         }
 
@@ -230,7 +224,10 @@ namespace Platformer
 
             // Draw score
             float timeHeight = hudFont.MeasureString(timeString).Y;
-            DrawShadowedString(hudFont, "SCORE: " + level.Score.ToString(), hudLocation + new Vector2(0.0f, timeHeight * 1.2f), Color.Yellow);
+            String scoreString = "SCORE: " + level.Score.ToString();
+            if (level.Player.GhostData != null)
+                scoreString += " / " + level.Player.GhostData.HighScore.ToString();
+            DrawShadowedString(hudFont, scoreString, hudLocation + new Vector2(0.0f, timeHeight * 1.2f), Color.Yellow);
            
             // Determine the status overlay message to show.
             Texture2D status = null;

@@ -41,6 +41,7 @@ namespace Platformer
             get { return position; }
         }
         Vector2 position;
+        Vector2 initialPosition;
 
         private Rectangle localBounds;
         /// <summary>
@@ -89,8 +90,17 @@ namespace Platformer
         {
             this.level = level;
             this.position = position;
+            this.initialPosition = position;
 
             LoadContent(spriteSet);
+        }
+
+        public void Reset()
+        {
+            this.position = initialPosition;
+            sprite.PlayAnimation(idleAnimation);
+            waitTime = 0.0f;
+            direction = FaceDirection.Left;
         }
 
         /// <summary>
