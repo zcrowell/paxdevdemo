@@ -111,13 +111,13 @@
     },
 
     "AWSRegionArch2AMI" : {
-      "us-east-1"      : { "32" : "ami-31814f58", "64" : "ami-1b814f72", "64HVM" : "ami-0da96764" },
-      "us-west-2"      : { "32" : "ami-38fe7308", "64" : "ami-30fe7300", "64HVM" : "NOT_YET_SUPPORTED" },
-      "us-west-1"      : { "32" : "ami-11d68a54", "64" : "ami-1bd68a5e", "64HVM" : "NOT_YET_SUPPORTED" },
-      "eu-west-1"      : { "32" : "ami-973b06e3", "64" : "ami-953b06e1", "64HVM" : "NOT_YET_SUPPORTED" },
-      "ap-southeast-1" : { "32" : "ami-b4b0cae6", "64" : "ami-beb0caec", "64HVM" : "NOT_YET_SUPPORTED" },
-      "ap-northeast-1" : { "32" : "ami-0644f007", "64" : "ami-0a44f00b", "64HVM" : "NOT_YET_SUPPORTED" },
-      "sa-east-1"      : { "32" : "ami-3e3be423", "64" : "ami-3c3be421", "64HVM" : "NOT_YET_SUPPORTED" }
+      "us-east-1"      : { "32" : "ami-a0cd60c9", "64" : "ami-aecd60c7", "64HVM" : "NOT_YET_SUPPORTED" },
+      "us-west-2"      : { "32" : "ami-46da5576", "64" : "ami-48da5578", "64HVM" : "NOT_YET_SUPPORTED" },
+      "us-west-1"      : { "32" : "ami-7d4c6938", "64" : "ami-734c6936", "64HVM" : "NOT_YET_SUPPORTED" },
+      "eu-west-1"      : { "32" : "ami-61555115", "64" : "ami-6d555119", "64HVM" : "NOT_YET_SUPPORTED" },
+      "ap-southeast-1" : { "32" : "ami-220b4a70", "64" : "ami-3c0b4a6e", "64HVM" : "NOT_YET_SUPPORTED" },
+      "ap-northeast-1" : { "32" : "ami-2a19aa2b", "64" : "ami-2819aa29", "64HVM" : "NOT_YET_SUPPORTED" },
+      "sa-east-1"      : { "32" : "ami-f836e8e5", "64" : "ami-fe36e8e3", "64HVM" : "NOT_YET_SUPPORTED" }
     }
   },
 
@@ -244,7 +244,7 @@
             },
 
             "sources" : {
-              "/home/ec2-user/paxdemo" : "https://s3.amazonaws.com/paxdemo/PlatformerServer.zip"
+              "/home/ec2-user/paxdemo" : "https://s3.amazonaws.com/paxdevdemo/PlatformerServer.zip"
             },
 
             "files" : {
@@ -277,7 +277,7 @@
         "KeyName"        : { "Ref" : "KeyName" },
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
           "#!/bin/bash -v\n",
-          "yum update -y\n",
+
           "yum update -y aws-cfn-bootstrap\n",
 
           "# Helper function\n",
@@ -296,7 +296,7 @@
           "# Install anu other Gems, create the database and run a migration\n",
           "cd /home/ec2-user/paxdemo\n",
           "bundle install  || error_exit 'Failed to install bundle'\n",
-          // "rake db:migrate || error_exit 'Failed to execute database migration'\n",
+          "rake db:migrate || error_exit 'Failed to execute database migration'\n",
 
           "# Startup the rails server\n",
           "rails server -d\n",
@@ -319,7 +319,7 @@
       "DependsOn" : "WebServerGroup",
       "Properties" : {
         "Handle"  : {"Ref" : "WaitHandle"},
-        "Timeout" : "1500",
+        "Timeout" : "3000",
         "Count"   : { "Ref" : "WebServerCapacity" }
       }
     },

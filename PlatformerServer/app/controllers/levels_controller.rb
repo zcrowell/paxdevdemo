@@ -6,7 +6,7 @@ class LevelsController < ApplicationController
 
     respond_to do |format|
       format.html # index.html.erb
-      format.json { render json: @levels }
+      format.json { render :json => @levels }
     end
   end
 
@@ -17,7 +17,7 @@ class LevelsController < ApplicationController
 
     respond_to do |format|
       format.html # show.html.erb
-      format.json { render json: @level }
+      format.json { render :json => @level }
     end
   end
 
@@ -28,7 +28,7 @@ class LevelsController < ApplicationController
 
     respond_to do |format|
       format.html # new.html.erb
-      format.json { render json: @level }
+      format.json { render :json => @level }
     end
   end
 
@@ -44,11 +44,11 @@ class LevelsController < ApplicationController
 
     respond_to do |format|
       if @level.save
-        format.html { redirect_to @level, notice: 'Level was successfully created.' }
-        format.json { render json: @level, status: :created, location: @level }
+        format.html { redirect_to @level, :notice => 'Level was successfully created.' }
+        format.json { render :json => @level, :status => :created, :location => @level }
       else
-        format.html { render action: "new" }
-        format.json { render json: @level.errors, status: :unprocessable_entity }
+        format.html { render :action => "new" }
+        format.json { render :json => @level.errors, :status => :unprocessable_entity }
       end
     end
   end
@@ -60,11 +60,11 @@ class LevelsController < ApplicationController
 
     respond_to do |format|
       if @level.update_attributes(params[:level])
-        format.html { redirect_to @level, notice: 'Level was successfully updated.' }
+        format.html { redirect_to @level, :notice => 'Level was successfully updated.' }
         format.json { head :no_content }
       else
-        format.html { render action: "edit" }
-        format.json { render json: @level.errors, status: :unprocessable_entity }
+        format.html { render :action => "edit" }
+        format.json { render :json => @level.errors, :status => :unprocessable_entity }
       end
     end
   end
