@@ -1,0 +1,1 @@
+watch -d -n 10 cfn-describe-stack-events devel-stack --region=us-west-2
