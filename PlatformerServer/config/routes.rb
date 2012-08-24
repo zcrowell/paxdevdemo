@@ -3,6 +3,8 @@ PlatformerServer::Application.routes.draw do
 
   resources :levels
 
+  match 'replays/best/:level_id' => 'replays#best'
+
   root :to => "home#index"
 
   # The priority is based upon order of creation:
