@@ -29,6 +29,6 @@ ActiveRecord::Schema.define(:version => 20120824001742) do
     t.datetime "updated_at", :null => false
   end
 
-  add_index "replays", ["score"], :name => "index_replays_on_score"
+  add_index "replays", ["level_id", "score"], :name => "index_replays_on_level_id_and_score"
 
 end

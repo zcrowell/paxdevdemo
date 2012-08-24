@@ -9,6 +9,7 @@
       <th><%= model_class.human_attribute_name(:name) %></th>
       <th><%= model_class.human_attribute_name(:content) %></th>
       <th><%= model_class.human_attribute_name(:created_at) %></th>
+      <th>Replays</th>
       <th><%=t '.actions', :default => t("helpers.actions") %></th>
     </tr>
   </thead>
@@ -19,6 +20,8 @@
         <td><%= level.name %></td>
         <td><pre><%= level.content %></pre></td>
         <td><%=l level.created_at %></td>
+        <td><%= link_to 'Replays', :controller => 'replays',
+                        :level_id => level.id %></td>
         <td>
           <%= link_to t('.edit', :default => t("helpers.links.edit")),
                       edit_level_path(level), :class => 'btn btn-small' %>

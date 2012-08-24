@@ -4,7 +4,11 @@ class ReplaysController < ApplicationController
   # GET /replays
   # GET /replays.json
   def index
-    @replays = Replay.all
+    if(params[:level_id] == nil)
+      @replays = Replay.all(:order => 'level_id, score DESC')
+    else
+      @replays = Replay.where(:level_id => params[:level_id]).order(:score)
+    end
 
     respond_to do |format|
       format.html # index.html.erb
