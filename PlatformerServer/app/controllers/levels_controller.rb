@@ -1,4 +1,7 @@
 class LevelsController < ApplicationController
+
+  http_basic_authenticate_with :name => "julien", :password => "secret", :except => [:index,:show]
+
   # GET /levels
   # GET /levels.json
   def index

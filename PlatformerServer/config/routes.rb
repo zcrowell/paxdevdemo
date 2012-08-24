@@ -1,4 +1,6 @@
 PlatformerServer::Application.routes.draw do
+  resources :replays
+
   resources :levels
 
   root :to => "home#index"

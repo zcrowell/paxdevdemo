@@ -1,0 +1,1 @@
+cfn-create-stack prod-stack --capabilities CAPABILITY_IAM --parameters "DBPassword=mysqlpaswd;DBUsername=julien;KeyName=PaxDemoKP;AlarmEmail=paxdemo@gmail.com" --template-file Rails_Multi_AZ.json --region=us-west-2

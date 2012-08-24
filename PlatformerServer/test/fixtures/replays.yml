@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  player: MyString
+  score: 
+  level_id: 
+  data: 
+
+two:
+  player: MyString
+  score: 
+  level_id: 
+  data: 

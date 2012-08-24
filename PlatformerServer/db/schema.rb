@@ -11,13 +11,24 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120823064747) do
+ActiveRecord::Schema.define(:version => 20120824001742) do
 
   create_table "levels", :force => true do |t|
-    t.string   "name"
-    t.text     "content"
+    t.string   "name",       :null => false
+    t.text     "content",    :null => false
     t.datetime "created_at", :null => false
     t.datetime "updated_at", :null => false
   end
+
+  create_table "replays", :force => true do |t|
+    t.string   "player",     :null => false
+    t.integer  "score",      :null => false
+    t.integer  "level_id",   :null => false
+    t.binary   "data",       :null => false
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  add_index "replays", ["score"], :name => "index_replays_on_score"
 
 end
