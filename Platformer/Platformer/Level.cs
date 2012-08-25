@@ -16,6 +16,9 @@ using Microsoft.Xna.Framework.Audio;
 using System.IO;
 using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Input;
+using System.Net;
+using System.ComponentModel;
+using System.Threading;
 
 namespace Platformer
 {
@@ -26,6 +29,11 @@ namespace Platformer
     /// </summary>
     class Level : IDisposable
     {
+        // loading
+        public bool IsLoading { get; set; }
+        private BackgroundWorker loadingWorker;
+        private Texture2D loadingOverlay;
+
         // Physical structure of the level.
         private Tile[,] tiles;
         private Texture2D[] layers;
@@ -88,6 +96,8 @@ namespace Platformer
 
         private SoundEffect exitReachedSound;
 
+        public LevelData LevelData { get; set; }
+
         #region Loading
 
         /// <summary>
@@ -101,14 +111,21 @@ namespace Platformer
         /// </param>
         public Level(IServiceProvider serviceProvider, Stream fileStream, int levelIndex)
         {
+            
+            
+        }
+
+        public Level(IServiceProvider serviceProvider, LevelData levelData)
+        {
+            LevelData = levelData;
+
+            IsLoading = true;
+            loadingWorker = new BackgroundWorker();
+            loadingWorker.DoWork += new DoWorkEventHandler(loadingWorker_DoWork);
+            loadingWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(loadingWorker_RunWorkerCompleted);
+
             // Create a new content manager to load content used just by this level.
             content = new ContentManager(serviceProvider, "Content");
-
-            replayData = ReplayData.LoadRecordedData(levelIndex);
-
-            timeRemaining = TimeSpan.FromSeconds(25);
-
-            LoadTiles(fileStream);
 
             // Load background layer textures. For now, all levels must
             // use the same backgrounds and only use the left-most part of them.
@@ -116,12 +133,31 @@ namespace Platformer
             for (int i = 0; i < layers.Length; ++i)
             {
                 // Choose a random segment if each background layer for level variety.
-                int segmentIndex = levelIndex;
+                int segmentIndex = (levelData.Id - 1) % 3; // we only have 3 backgrounds
                 layers[i] = Content.Load<Texture2D>("Backgrounds/Layer" + i + "_" + segmentIndex);
             }
 
             // Load sounds.
             exitReachedSound = Content.Load<SoundEffect>("Sounds/ExitReached");
+            loadingOverlay = Content.Load<Texture2D>("Overlays/loading");
+
+            LoadTiles(levelData.Content);
+
+            loadingWorker.RunWorkerAsync();
+        }
+
+        void loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            IsLoading = false;
+        }
+
+        void loadingWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            //replayData = ReplayData.LoadRecordedData(levelIndex);
+
+            timeRemaining = TimeSpan.FromSeconds(25);
+
+            Thread.Sleep(5000);
         }
 
         /// <summary>
@@ -132,12 +168,12 @@ namespace Platformer
         /// <param name="fileStream">
         /// A stream containing the tile data.
         /// </param>
-        private void LoadTiles(Stream fileStream)
+        private void LoadTiles(String levelContent)
         {
             // Load the level and ensure all of the lines are the same length.
             int width;
             List<string> lines = new List<string>();
-            using (StreamReader reader = new StreamReader(fileStream))
+            using (StringReader reader = new StringReader(levelContent))
             {
                 string line = reader.ReadLine();
                 width = line.Length;
@@ -388,10 +424,11 @@ namespace Platformer
             GameTime gameTime, 
             KeyboardState keyboardState, 
             GamePadState gamePadState, 
-            TouchCollection touchState, 
-            AccelerometerState accelState,
             DisplayOrientation orientation)
         {
+            if (IsLoading)
+                return;
+
             if (!initializedLevelStartTime)
             {
                 totalTimeLevelStarted = gameTime.TotalGameTime;
@@ -423,7 +460,7 @@ namespace Platformer
             else
             {
                 timeRemaining -= gameTime.ElapsedGameTime;
-                Player.Update(gameTime, keyboardState, gamePadState, touchState, accelState, orientation);
+                Player.Update(gameTime, keyboardState, gamePadState, orientation);
                 UpdateGems(gameTime);
 
                 // Falling off the bottom of the level kills the player.
@@ -551,23 +588,35 @@ namespace Platformer
         /// <summary>
         /// Draw everything in the level from background to foreground.
         /// </summary>
-        public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
+        public void Draw(GraphicsDevice graphicsDevice, GameTime gameTime, SpriteBatch spriteBatch)
         {
             for (int i = 0; i <= EntityLayer; ++i)
                 spriteBatch.Draw(layers[i], Vector2.Zero, Color.White);
 
-            DrawTiles(spriteBatch);
+            if (IsLoading)
+            {
+                Rectangle titleSafeArea = graphicsDevice.Viewport.TitleSafeArea;
+                Vector2 center = new Vector2(titleSafeArea.X + titleSafeArea.Width / 2.0f,
+                                             titleSafeArea.Y + titleSafeArea.Height / 2.0f);
 
-            foreach (Gem gem in gems)
-                gem.Draw(gameTime, spriteBatch);
+                Vector2 statusSize = new Vector2(loadingOverlay.Width, loadingOverlay.Height);
+                spriteBatch.Draw(loadingOverlay, center - statusSize / 2, Color.White);
+            }
+            else
+            {
+                DrawTiles(spriteBatch);
 
-            Player.Draw(gameTime, spriteBatch);
+                foreach (Gem gem in gems)
+                    gem.Draw(gameTime, spriteBatch);
 
-            foreach (Enemy enemy in enemies)
-                enemy.Draw(gameTime, spriteBatch);
+                Player.Draw(gameTime, spriteBatch);
 
-            for (int i = EntityLayer + 1; i < layers.Length; ++i)
-                spriteBatch.Draw(layers[i], Vector2.Zero, Color.White);
+                foreach (Enemy enemy in enemies)
+                    enemy.Draw(gameTime, spriteBatch);
+
+                for (int i = EntityLayer + 1; i < layers.Length; ++i)
+                    spriteBatch.Draw(layers[i], Vector2.Zero, Color.White);
+            }
         }
 
         /// <summary>
@@ -593,5 +642,44 @@ namespace Platformer
         }
 
         #endregion
+
+        #region Helper
+
+        private bool SaveFileFromURL(string url, string destinationFileName, int timeoutInSeconds)
+        {
+            // Create a web request to the URL
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Timeout = timeoutInSeconds * 1000;
+
+            // Get the web response
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+            // Make sure the response is valid
+            if (HttpStatusCode.OK == response.StatusCode)
+            {
+                // Open the response stream
+                using (Stream responseStream = response.GetResponseStream())
+                {
+                    // Open the destination file
+                    using (FileStream fileStream = new FileStream(destinationFileName, FileMode.OpenOrCreate, FileAccess.Write))
+                    {
+                        // Create a 4K buffer to chunk the file
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        // Read the chunk of the web response into the buffer
+                        while (0 < (bytesRead = responseStream.Read(buffer, 0, buffer.Length)))
+                        {
+                            // Write the chunk from the buffer to the file
+                            fileStream.Write(buffer, 0, bytesRead);
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        #endregion
+
+        
     }
 }

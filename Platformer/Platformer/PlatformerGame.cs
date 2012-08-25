@@ -14,6 +14,13 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Input.Touch;
+using System.ComponentModel;
+using System.Net;
+using System.Text;
+using System.Threading;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 
 namespace Platformer
@@ -23,6 +30,9 @@ namespace Platformer
     /// </summary>
     public class PlatformerGame : Microsoft.Xna.Framework.Game
     {
+        private const String LEVEL_URL = "http://paxdevdemo.com/levels.json";
+        private const String USER_NAME = "juliene@amazon.com";
+
         // Resources for drawing.
         private GraphicsDeviceManager graphics;
         private SpriteBatch spriteBatch;
@@ -33,11 +43,18 @@ namespace Platformer
         private Texture2D winOverlay;
         private Texture2D loseOverlay;
         private Texture2D diedOverlay;
+        private Texture2D loadingOverlay;
+        private Texture2D loadingBackground;
 
         // Meta-level game state.
+        private List<LevelData> levelsData;
         private int levelIndex = -1;
-        private Level level;
+        private Level currentLevel;
         private bool wasContinuePressed;
+        
+        private bool isLoading = true;
+        public String LoadingStatus { get; set; }
+        private BackgroundWorker loadingWorker;
 
         // When the time remaining is less than the warning time, it blinks on the hud
         private static readonly TimeSpan WarningTime = TimeSpan.FromSeconds(5);
@@ -46,26 +63,16 @@ namespace Platformer
         // then we use the same input state wherever needed
         private GamePadState gamePadState;
         private KeyboardState keyboardState;
-        private TouchCollection touchState;
-        private AccelerometerState accelerometerState;
-        
-        // The number of levels in the Levels directory of our content. We assume that
-        // levels in our content are 0-based and that all numbers under this constant
-        // have a level file present. This allows us to not need to check for the file
-        // or handle exceptions, both of which can add unnecessary time to level loading.
-        private const int numberOfLevels = 3;
 
         public PlatformerGame()
         {
+            LoadingStatus = "";
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-#if WINDOWS_PHONE
-            graphics.IsFullScreen = true;
-            TargetElapsedTime = TimeSpan.FromTicks(333333);
-#endif
-
-            Accelerometer.Initialize();
+            loadingWorker = new BackgroundWorker();
+            loadingWorker.DoWork += new DoWorkEventHandler(loadingWorker_DoWork);
+            loadingWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(loadingWorker_RunWorkerCompleted);
         }
 
         /// <summary>
@@ -84,6 +91,8 @@ namespace Platformer
             winOverlay = Content.Load<Texture2D>("Overlays/you_win");
             loseOverlay = Content.Load<Texture2D>("Overlays/you_lose");
             diedOverlay = Content.Load<Texture2D>("Overlays/you_died");
+            loadingOverlay = Content.Load<Texture2D>("Overlays/loading");
+            loadingBackground = Content.Load<Texture2D>("Backgrounds/Layer0_0");
 
             //Known issue that you get exceptions if you use Media PLayer while connected to your PC
             //See http://social.msdn.microsoft.com/Forums/en/windowsphone7series/thread/c8a243d2-d360-46b1-96bd-62b1ef268c66
@@ -96,9 +105,11 @@ namespace Platformer
             }
             catch { }
 
-            LoadNextLevel();
+            // start a network request to get all the levels in the background
+            loadingWorker.RunWorkerAsync();
         }
 
+        
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -106,23 +117,53 @@ namespace Platformer
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            
             // Handle polling for our input and handling high-level input
             HandleInput(gameTime);
 
-            // update our level, passing down the GameTime along with all of our input states
-            level.Update(gameTime, keyboardState, gamePadState, touchState, 
-                         accelerometerState, Window.CurrentOrientation);
-
+            if (!isLoading)
+            {
+                // update our level, passing down the GameTime along with all of our input states
+                currentLevel.Update(gameTime, keyboardState, gamePadState, Window.CurrentOrientation);
+            }
             base.Update(gameTime);
         }
+
+        private void loadingWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(LEVEL_URL);
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+            // Get the stream associated with the response.
+            Stream receiveStream = response.GetResponseStream();
+
+            // Pipes the stream to a higher level stream reader with the required encoding format. 
+            StreamReader readStream = new StreamReader(receiveStream, Encoding.UTF8);
+            JArray array = (JArray)JArray.ReadFrom(new JsonTextReader(readStream));
+
+            levelsData = LevelData.ParseJson(array);
+
+            LoadingStatus = "Received "  + levelsData.Count + " levels";
+            
+            response.Close();
+            readStream.Close();
+            Thread.Sleep(2000);
+        }
+
+        private void loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            LoadNextLevel();
+            isLoading = false;
+        }
+
+
 
         private void HandleInput(GameTime gameTime)
         {
             // get all of our input states
             keyboardState = Keyboard.GetState();
             gamePadState = GamePad.GetState(PlayerIndex.One);
-            touchState = TouchPanel.GetState();
-            accelerometerState = Accelerometer.GetState();
+            
 
             // Exit the game when back is pressed.
             if (gamePadState.Buttons.Back == ButtonState.Pressed || keyboardState.IsKeyDown(Keys.Escape))
@@ -130,24 +171,25 @@ namespace Platformer
 
             bool continuePressed =
                 keyboardState.IsKeyDown(Keys.Space) ||
-                gamePadState.IsButtonDown(Buttons.A) ||
-                touchState.AnyTouch();
+                gamePadState.IsButtonDown(Buttons.A);
             bool saveReplayPressed = keyboardState.IsKeyDown(Keys.Y) ||
                 gamePadState.IsButtonDown(Buttons.Y);
 
+
+
             // Perform the appropriate action to advance the game and
             // to get the player back to playing.
-            if (!wasContinuePressed && continuePressed)
+            if (!isLoading && !wasContinuePressed && continuePressed)
             {
-                if (!level.Player.IsAlive)
+                if (!currentLevel.Player.IsAlive)
                 {
-                    level.StartNewLife(gameTime);
+                    currentLevel.StartNewLife(gameTime);
                 }
-                else if (level.TimeRemaining == TimeSpan.Zero)
+                else if (currentLevel.TimeRemaining == TimeSpan.Zero)
                 {
-                    if (level.ReachedExit) {
-                        if(level.Player.GhostData == null || level.Score > level.Player.GhostData.HighScore) {
-                            level.Player.ReplayData.SaveRecordedData(levelIndex);
+                    if (currentLevel.ReachedExit) {
+                        if(currentLevel.Player.GhostData == null || currentLevel.Score > currentLevel.Player.GhostData.HighScore) {
+                            currentLevel.Player.ReplayData.SaveRecordedData(currentLevel.LevelData.Id);
                         }
                         LoadNextLevel();
                     } else {
@@ -161,21 +203,18 @@ namespace Platformer
         private void LoadNextLevel()
         {
             // move to the next level
-            levelIndex = (levelIndex + 1) % numberOfLevels;
+            levelIndex = (levelIndex + 1) % levelsData.Count;
 
             // Unloads the content for the current level before loading the next one.
-            if (level != null)
-                level.Dispose();
+            if (currentLevel != null)
+                currentLevel.Dispose();
 
             // Load the level.
-            string levelPath = string.Format("Content/Levels/{0}.txt", levelIndex);
-            using (Stream fileStream = TitleContainer.OpenStream(levelPath))
-                level = new Level(Services, fileStream, levelIndex);
+            currentLevel = new Level(Services, levelsData[levelIndex]);
         }
 
         private void ReloadCurrentLevel()
         {
-            --levelIndex;
             LoadNextLevel();
         }
 
@@ -185,18 +224,37 @@ namespace Platformer
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
-
-
+            graphics.GraphicsDevice.Clear(new Color(107,200,207));
+            
             spriteBatch.Begin();
-
-            level.Draw(gameTime, spriteBatch);
-
-            DrawHud();
-
+            if (!isLoading)
+            {
+                currentLevel.Draw(GraphicsDevice, gameTime, spriteBatch);
+                DrawHud();
+            }
+            else
+            {
+                DrawLoadingScreen();
+            }
+            
             spriteBatch.End();
-
             base.Draw(gameTime);
+        }
+
+        
+        private void DrawLoadingScreen()
+        {
+            spriteBatch.Draw(loadingBackground, Vector2.Zero, Color.White);
+            Rectangle titleSafeArea = GraphicsDevice.Viewport.TitleSafeArea;
+            Vector2 center = new Vector2(titleSafeArea.X + titleSafeArea.Width / 2.0f,
+                                         titleSafeArea.Y + titleSafeArea.Height / 2.0f);
+
+            Vector2 statusSize = new Vector2(loadingOverlay.Width, loadingOverlay.Height);
+            spriteBatch.Draw(loadingOverlay, center - statusSize / 2, Color.White);
+
+            DrawShadowedString(hudFont, LoadingStatus, 
+                center + new Vector2(-hudFont.MeasureString(LoadingStatus).X/2, statusSize.Y/2 - 45),
+                Color.Yellow);
         }
 
         private void DrawHud()
@@ -208,11 +266,11 @@ namespace Platformer
 
             // Draw time remaining. Uses modulo division to cause blinking when the
             // player is running out of time.
-            string timeString = "TIME: " + level.TimeRemaining.Minutes.ToString("00") + ":" + level.TimeRemaining.Seconds.ToString("00");
+            string timeString = "TIME: " + currentLevel.TimeRemaining.Minutes.ToString("00") + ":" + currentLevel.TimeRemaining.Seconds.ToString("00");
             Color timeColor;
-            if (level.TimeRemaining > WarningTime ||
-                level.ReachedExit ||
-                (int)level.TimeRemaining.TotalSeconds % 2 == 0)
+            if (currentLevel.TimeRemaining > WarningTime ||
+                currentLevel.ReachedExit ||
+                (int)currentLevel.TimeRemaining.TotalSeconds % 2 == 0)
             {
                 timeColor = Color.Yellow;
             }
@@ -224,16 +282,16 @@ namespace Platformer
 
             // Draw score
             float timeHeight = hudFont.MeasureString(timeString).Y;
-            String scoreString = "SCORE: " + level.Score.ToString();
-            if (level.Player.GhostData != null)
-                scoreString += " / " + level.Player.GhostData.HighScore.ToString();
+            String scoreString = "SCORE: " + currentLevel.Score.ToString();
+            if (currentLevel.Player.GhostData != null)
+                scoreString += " / " + currentLevel.Player.GhostData.HighScore.ToString();
             DrawShadowedString(hudFont, scoreString, hudLocation + new Vector2(0.0f, timeHeight * 1.2f), Color.Yellow);
            
             // Determine the status overlay message to show.
             Texture2D status = null;
-            if (level.TimeRemaining == TimeSpan.Zero)
+            if (!currentLevel.IsLoading && currentLevel.TimeRemaining == TimeSpan.Zero)
             {
-                if (level.ReachedExit)
+                if (currentLevel.ReachedExit)
                 {
                     status = winOverlay;
                 }
@@ -242,7 +300,7 @@ namespace Platformer
                     status = loseOverlay;
                 }
             }
-            else if (!level.Player.IsAlive)
+            else if (!currentLevel.Player.IsAlive)
             {
                 status = diedOverlay;
             }

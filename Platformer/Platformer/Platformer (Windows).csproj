@@ -25,8 +25,8 @@
     </SupportedCultures>
     <ApplicationIcon>
     </ApplicationIcon>
-    <Thumbnail>
-    </Thumbnail>
+    <Thumbnail>GameThumbnail.png</Thumbnail>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -39,7 +39,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -69,12 +68,12 @@
     <XnaCompressContent>true</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Accelerometer.cs" />
     <Compile Include="Animation.cs" />
     <Compile Include="AnimationPlayer.cs" />
     <Compile Include="Circle.cs" />
     <Compile Include="Enemy.cs" />
     <Compile Include="Gem.cs" />
+    <Compile Include="LevelData.cs" />
     <Compile Include="PlayerState.cs" />
     <Compile Include="ReplayData.cs" />
     <Compile Include="Level.cs" />
@@ -137,6 +136,9 @@
     </Reference>
     <Reference Include="mscorlib">
       <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\References\Json.net\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Private>False</Private>

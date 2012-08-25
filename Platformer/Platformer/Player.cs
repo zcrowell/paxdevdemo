@@ -246,12 +246,10 @@ namespace Platformer
             GameTime gameTime, 
             KeyboardState keyboardState, 
             GamePadState gamePadState, 
-            TouchCollection touchState, 
-            AccelerometerState accelState,
             DisplayOrientation orientation)
         {
             
-            GetInput(gameTime, keyboardState, gamePadState, touchState, accelState, orientation);
+            GetInput(gameTime, keyboardState, gamePadState, orientation);
             
             for (int i = 0; i < isOnGround.Count; i++)
             {
@@ -284,8 +282,6 @@ namespace Platformer
             GameTime gameTime,
             KeyboardState keyboardState,
             GamePadState gamePadState,
-            TouchCollection touchState,
-            AccelerometerState accelState,
             DisplayOrientation orientation)
         {
 
@@ -295,17 +291,6 @@ namespace Platformer
             // Ignore small movements to prevent running in place.
             if (Math.Abs(movement[0]) < 0.5f)
                 movement[0] = 0.0f;
-
-            // Move the player with accelerometer
-            if (Math.Abs(accelState.Acceleration.Y) > 0.10f)
-            {
-                // set our movement speed
-                movement[0] = MathHelper.Clamp(-accelState.Acceleration.Y * AccelerometerScale, -1f, 1f);
-
-                // if we're in the LandscapeLeft orientation, we must reverse our movement
-                if (orientation == DisplayOrientation.LandscapeRight)
-                    movement[0] = -movement[0];
-            }
 
             // If any digital horizontal movement input is found, override the analog movement.
             if (gamePadState.IsButtonDown(Buttons.DPadLeft) ||
@@ -326,8 +311,7 @@ namespace Platformer
                 gamePadState.IsButtonDown(JumpButton) ||
                 keyboardState.IsKeyDown(Keys.Space) ||
                 keyboardState.IsKeyDown(Keys.Up) ||
-                keyboardState.IsKeyDown(Keys.W) ||
-                touchState.AnyTouch();
+                keyboardState.IsKeyDown(Keys.W);
 
 
             replayData.RecordPlayerInput(gameTime.TotalGameTime - level.TotalTimeLevelStarted, movement[0], isJumping[0]);
