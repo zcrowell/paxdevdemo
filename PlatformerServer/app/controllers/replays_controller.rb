@@ -1,6 +1,6 @@
 class ReplaysController < ApplicationController
   http_basic_authenticate_with :name => "julien", :password => "secret", :except => [:index,:show]
-
+  skip_before_filter :verify_authenticity_token, :except => [:destroy, :edit, :update]
 
   # GET /replays
   # GET /replays.json
@@ -8,7 +8,7 @@ class ReplaysController < ApplicationController
     if(params[:level_id] == nil)
       @replays = Replay.all(:order => 'level_id, score DESC')
     else
-      @replays = Replay.where(:level_id => params[:level_id]).order(:score)
+      @replays = Replay.where(:level_id => params[:level_id]).order(:score).reverse_order
     end
 
     respond_to do |format|
@@ -28,7 +28,7 @@ class ReplaysController < ApplicationController
   # GET /replays/best/1
   def best
     begin
-      @replay = Replay.where(:level_id => params[:level_id]).order(:score).first!
+      @replay = Replay.where(:level_id => params[:level_id]).order(:score).reverse_order.first!
       send_data @replay.data, :filename => @replay.level_id.to_s + ".replay"
     rescue ActiveRecord::RecordNotFound
       render(:file => "#{Rails.root}/public/404.html", :layout => false, :status => 404)
@@ -64,8 +64,10 @@ class ReplaysController < ApplicationController
     respond_to do |format|
       if @replay.save
         format.html { redirect_to replays_path, :notice => 'Replay was successfully created.' }
+        format.json { render :json => { :satus => 'Ok' } }
       else
         format.html { render :action => "new" }
+        format.json { render :json => { :satus => 'Fail' } }
       end
     end
   end
