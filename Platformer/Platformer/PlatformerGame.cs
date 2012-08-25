@@ -50,7 +50,7 @@ namespace Platformer
         private int levelIndex = -1;
         private Level currentLevel;
         private bool wasContinuePressed;
-        
+
         private bool isLoading = true;
         public String LoadingStatus { get; set; }
         private BackgroundWorker loadingWorker;
@@ -108,7 +108,7 @@ namespace Platformer
             loadingWorker.RunWorkerAsync();
         }
 
-        
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -116,7 +116,7 @@ namespace Platformer
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            
+
             // Handle polling for our input and handling high-level input
             HandleInput(gameTime);
 
@@ -142,8 +142,8 @@ namespace Platformer
 
             levelsData = LevelData.ParseJson(array);
 
-            LoadingStatus = "Received "  + levelsData.Count + " levels";
-            
+            LoadingStatus = "Received " + levelsData.Count + " levels";
+
             response.Close();
             readStream.Close();
             Thread.Sleep(2000);
@@ -162,7 +162,7 @@ namespace Platformer
             // get all of our input states
             keyboardState = Keyboard.GetState();
             gamePadState = GamePad.GetState(PlayerIndex.One);
-            
+
 
             // Exit the game when back is pressed.
             if (gamePadState.Buttons.Back == ButtonState.Pressed || keyboardState.IsKeyDown(Keys.Escape))
@@ -171,7 +171,7 @@ namespace Platformer
             bool continuePressed =
                 keyboardState.IsKeyDown(Keys.Space) ||
                 gamePadState.IsButtonDown(Buttons.A);
-            
+
             // Perform the appropriate action to advance the game and
             // to get the player back to playing.
             if (!isLoading && !wasContinuePressed && continuePressed)
@@ -182,12 +182,16 @@ namespace Platformer
                 }
                 else if (currentLevel.TimeRemaining == TimeSpan.Zero)
                 {
-                    if (currentLevel.ReachedExit) {
-                        if(currentLevel.Player.GhostData == null || currentLevel.Score > currentLevel.Player.GhostData.HighScore) {
+                    if (currentLevel.ReachedExit)
+                    {
+                        if (currentLevel.Player.GhostData == null || currentLevel.Score > currentLevel.Player.GhostData.HighScore)
+                        {
                             currentLevel.Player.ReplayData.SaveAndUploadRecordedDataAsync(currentLevel.LevelData.Id, PLAYER_NAME, null);
                         }
                         LoadNextLevel();
-                    } else {
+                    }
+                    else
+                    {
                         ReloadCurrentLevel();
                     }
                 }
@@ -219,8 +223,8 @@ namespace Platformer
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            graphics.GraphicsDevice.Clear(new Color(107,200,207));
-            
+            graphics.GraphicsDevice.Clear(new Color(107, 200, 207));
+
             spriteBatch.Begin();
             if (!isLoading)
             {
@@ -231,12 +235,12 @@ namespace Platformer
             {
                 DrawLoadingScreen();
             }
-            
+
             spriteBatch.End();
             base.Draw(gameTime);
         }
 
-        
+
         private void DrawLoadingScreen()
         {
             spriteBatch.Draw(loadingBackground, Vector2.Zero, Color.White);
@@ -247,8 +251,8 @@ namespace Platformer
             Vector2 statusSize = new Vector2(loadingOverlay.Width, loadingOverlay.Height);
             spriteBatch.Draw(loadingOverlay, center - statusSize / 2, Color.White);
 
-            DrawShadowedString(hudFont, LoadingStatus, 
-                center + new Vector2(-hudFont.MeasureString(LoadingStatus).X/2, statusSize.Y/2 - 45),
+            DrawShadowedString(hudFont, LoadingStatus,
+                center + new Vector2(-hudFont.MeasureString(LoadingStatus).X / 2, statusSize.Y / 2 - 45),
                 Color.Yellow);
         }
 
@@ -277,7 +281,7 @@ namespace Platformer
 
             // draw level name
             float levelNameLength = hudFont.MeasureString(currentLevel.LevelData.Name).X;
-            DrawShadowedString(hudFont, currentLevel.LevelData.Name, 
+            DrawShadowedString(hudFont, currentLevel.LevelData.Name,
                 hudLocation + new Vector2(titleSafeArea.Width - levelNameLength - 5, 0.0f), Color.Yellow);
 
             // Draw score
@@ -286,7 +290,7 @@ namespace Platformer
             if (currentLevel.Player != null && currentLevel.Player.GhostData != null)
                 scoreString += " / " + currentLevel.Player.GhostData.HighScore.ToString();
             DrawShadowedString(hudFont, scoreString, hudLocation + new Vector2(0.0f, timeHeight * 1.2f), Color.Yellow);
-           
+
             // Determine the status overlay message to show.
             Texture2D status = null;
             if (!currentLevel.IsLoading && currentLevel.TimeRemaining == TimeSpan.Zero)

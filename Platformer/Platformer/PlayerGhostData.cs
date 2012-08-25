@@ -6,7 +6,8 @@ namespace Platformer
     {
         public static PlayerGhostData NoMovement = new PlayerGhostData(new TimeSpan(), 0.0f, false);
 
-        public PlayerGhostData(TimeSpan totalGameTime, float mouvement, bool isJumping) : this()
+        public PlayerGhostData(TimeSpan totalGameTime, float mouvement, bool isJumping)
+            : this()
         {
             TotalGametime = totalGameTime;
             Mouvement = mouvement;

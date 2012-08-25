@@ -16,18 +16,18 @@ namespace Platformer
     class ReplayData
     {
         private const String BEST_REPLAY_URL = "http://paxdevdemo.com/replays/best/{0}";
-        
+
 
         public int HighScore { get; set; }
-        public List<List<PlayerGhostData>> PlayerHistory { get; set;}
-        
-        
+        public List<List<PlayerGhostData>> PlayerHistory { get; set; }
+
+
         private List<int> nextPlayerCursors = new List<int>(1);
         private List<PlayerGhostData> lastResults;
         private TimeSpan currentStreamDelta;
 
         private BackgroundWorker uploader;
-        
+
 
         [JsonIgnore]
         public int StreamCount
@@ -35,24 +35,26 @@ namespace Platformer
             get { return PlayerHistory.Count; }
         }
 
-        public ReplayData() {
+        public ReplayData()
+        {
             PlayerHistory = new List<List<PlayerGhostData>>(1);
             uploader = new BackgroundWorker();
         }
 
 
 
-        public List<PlayerGhostData> GetNextPlayerInputs(TimeSpan levelTime) {
+        public List<PlayerGhostData> GetNextPlayerInputs(TimeSpan levelTime)
+        {
             List<PlayerGhostData> result = new List<PlayerGhostData>(PlayerHistory.Count);
 
-            for(int i=0;i<PlayerHistory.Count;i++)
+            for (int i = 0; i < PlayerHistory.Count; i++)
             {
                 PlayerGhostData candidate = PlayerHistory[i][nextPlayerCursors[i]];
                 if (levelTime > candidate.TotalGametime)
                 {
                     if (nextPlayerCursors[i] + 1 < PlayerHistory[i].Count)
                         nextPlayerCursors[i]++;
-                    
+
                     lastResults[i] = candidate;
                     result.Add(candidate);
                 }
@@ -70,7 +72,7 @@ namespace Platformer
             List<PlayerGhostData> currentInputStream = PlayerHistory[PlayerHistory.Count - 1];
             PlayerGhostData lastInput = currentInputStream.LastOrDefault();
 
-            if(mouvement != lastInput.Mouvement || isJumping != lastInput.IsJumping)
+            if (mouvement != lastInput.Mouvement || isJumping != lastInput.IsJumping)
                 currentInputStream.Add(new PlayerGhostData(levelTime - currentStreamDelta, mouvement, isJumping));
         }
 
@@ -80,14 +82,14 @@ namespace Platformer
             PlayerHistory.Add(new List<PlayerGhostData>(50));
             nextPlayerCursors.Add(0);
             currentStreamDelta = newLifeTimeSinceLevelStart;
-            
+
         }
 
         public static void DownloadAndLoadRecordedDataAsync(int levelId, RunWorkerCompletedEventHandler onCompletedDo)
         {
             BackgroundWorker downloader = new BackgroundWorker();
             downloader.DoWork += new DoWorkEventHandler(downloader_DoWork);
-            if(onCompletedDo != null)
+            if (onCompletedDo != null)
                 downloader.RunWorkerCompleted += onCompletedDo;
             downloader.RunWorkerAsync(levelId);
         }
@@ -95,15 +97,15 @@ namespace Platformer
         public void SaveAndUploadRecordedDataAsync(int levelId, String playerName, RunWorkerCompletedEventHandler onCompletedDo)
         {
             BackgroundWorker uploader = new BackgroundWorker();
-            uploader.DoWork +=new DoWorkEventHandler(uploader_DoWork);
-            if(onCompletedDo != null)
+            uploader.DoWork += new DoWorkEventHandler(uploader_DoWork);
+            if (onCompletedDo != null)
                 uploader.RunWorkerCompleted += onCompletedDo;
-            uploader.RunWorkerAsync(new { levelId = levelId, player =  playerName});
+            uploader.RunWorkerAsync(new { levelId = levelId, player = playerName });
         }
 
         void uploader_DoWork(object sender, DoWorkEventArgs e)
         {
-            var obj = Cast(e.Argument,new { levelId = 0, player =  ""}) ;
+            var obj = Cast(e.Argument, new { levelId = 0, player = "" });
             int levelId = obj.levelId;
             String playerName = obj.player;
 
@@ -125,12 +127,12 @@ namespace Platformer
             nvc.Add("replay[level_id]", levelId.ToString());
             nvc.Add("replay[player]", playerName);
             nvc.Add("replay[score]", HighScore.ToString());
-            
+
             HttpUploadFile("http://paxdevdemo.com/replays",
                  fileName, "replay[data]", "application/octet-stream", nvc);
 
         }
-        
+
         private T Cast<T>(object obj, T type)
         {
             return (T)obj;
@@ -142,7 +144,7 @@ namespace Platformer
 
             SaveFileFromURL(String.Format(BEST_REPLAY_URL, levelId),
                 String.Format("{0}.replay", levelId.ToString("D4")), 5);
-            
+
 
 
             String fileName = levelId.ToString("D4") + ".replay";
@@ -219,7 +221,7 @@ namespace Platformer
                 // this is a best effort thing, don't crash if we don't succeed
                 Console.WriteLine("Could not load replay data from server!");
                 Console.WriteLine(ex);
-                
+
                 return false;
             }
             return true;

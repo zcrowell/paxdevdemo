@@ -100,7 +100,7 @@ namespace Platformer
             LevelData = levelData;
 
             IsLoading = true;
-            
+
 
             // Create a new content manager to load content used just by this level.
             content = new ContentManager(serviceProvider, "Content");
@@ -123,7 +123,8 @@ namespace Platformer
             exitReachedSound = Content.Load<SoundEffect>("Sounds/ExitReached");
 
             // try to download and then load the replay data, asynchronously
-            ReplayData.DownloadAndLoadRecordedDataAsync(this.LevelData.Id, (sender, e) => {
+            ReplayData.DownloadAndLoadRecordedDataAsync(this.LevelData.Id, (sender, e) =>
+            {
                 replayData = (ReplayData)e.Result;
                 // load the level and instantiate the player with replay data
                 LoadTiles(LevelData.Content);
@@ -292,7 +293,7 @@ namespace Platformer
                 throw new NotSupportedException("A level may only have one starting point.");
 
             start = RectangleExtensions.GetBottomCenter(GetBounds(x, y));
-            
+
             player = new Player(this, start, replayData);
 
             return new Tile(null, TileCollision.Passable);
@@ -396,9 +397,9 @@ namespace Platformer
         /// and handles the time limit with scoring.
         /// </summary>
         public void Update(
-            GameTime gameTime, 
-            KeyboardState keyboardState, 
-            GamePadState gamePadState, 
+            GameTime gameTime,
+            KeyboardState keyboardState,
+            GamePadState gamePadState,
             DisplayOrientation orientation)
         {
             if (IsLoading)
@@ -407,7 +408,7 @@ namespace Platformer
             if (!initializedLevelStartTime)
             {
                 totalTimeLevelStarted = gameTime.TotalGameTime;
-                initializedLevelStartTime = true;                
+                initializedLevelStartTime = true;
             }
 
             // record high score at the end of level 
@@ -428,9 +429,9 @@ namespace Platformer
                 int milliSeconds = (int)Math.Round(gameTime.ElapsedGameTime.TotalMilliseconds * 100.0f);
                 milliSeconds = Math.Min(milliSeconds, (int)Math.Ceiling(TimeRemaining.TotalMilliseconds));
 
-                
+
                 timeRemaining -= TimeSpan.FromMilliseconds(milliSeconds);
-                score += (int)Math.Round(milliSeconds * (PointsPerSecond/1000.0));
+                score += (int)Math.Round(milliSeconds * (PointsPerSecond / 1000.0));
             }
             else
             {
@@ -619,6 +620,6 @@ namespace Platformer
         #endregion
 
 
-        
+
     }
 }

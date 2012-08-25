@@ -35,15 +35,15 @@ namespace Platformer
             get { return replayData; }
         }
 
-        
-        
+
+
         // Animations
         private Animation idleAnimation;
         private Animation runAnimation;
         private Animation jumpAnimation;
         private Animation celebrateAnimation;
         private Animation dieAnimation;
-        
+
         private List<AnimationPlayer> sprites = new List<AnimationPlayer>(10);
 
         // Sounds
@@ -103,7 +103,7 @@ namespace Platformer
         private const float JumpLaunchVelocity = -3500.0f;
         private const float GravityAcceleration = 3400.0f;
         private const float MaxFallSpeed = 550.0f;
-        private const float JumpControlPower = 0.14f; 
+        private const float JumpControlPower = 0.14f;
 
         // Input configuration
         private const float MoveStickScale = 1.0f;
@@ -117,7 +117,7 @@ namespace Platformer
         {
             get { return isOnGround[0]; }
         }
-        
+
         private List<bool> isOnGround = new List<bool>(10);
         private List<bool> wasJumping = new List<bool>(10);
         private List<float> jumpTime = new List<float>(10);
@@ -128,7 +128,7 @@ namespace Platformer
 
         private Rectangle localBounds;
 
-        
+
         /// <summary>
         /// Gets a rectangle which bounds this player in world space.
         /// </summary>
@@ -145,14 +145,14 @@ namespace Platformer
         /// Constructors a new player.
         /// </summary>
 
-        public Player(Level level, Vector2 start, ReplayData replay)  
+        public Player(Level level, Vector2 start, ReplayData replay)
         {
 
-            
+
             this.replayData = new ReplayData();
 
             int positionsToCreate = (replay == null ? 0 : replay.StreamCount);
-            
+
             this.ghostData = replay;
             for (int i = 0; i <= positionsToCreate; i++)
             {
@@ -168,7 +168,7 @@ namespace Platformer
                 this.flips.Add(true);
                 this.playerStates.Add(PlayerState.Alive);
             }
- 
+
             this.level = level;
 
             LoadContent();
@@ -176,8 +176,8 @@ namespace Platformer
             Reset(null, start);
         }
 
-        
-        
+
+
         /// <summary>
         /// Loads the player sprite sheet and sounds.
         /// </summary>
@@ -209,16 +209,16 @@ namespace Platformer
         /// <param name="position">The position to come to life at.</param>
         public void Reset(GameTime gameTime, Vector2 position)
         {
-            if(gameTime != null)
+            if (gameTime != null)
                 this.replayData.NewPlayerInputStream(gameTime.TotalGameTime - level.TotalTimeLevelStarted);
             else
                 this.replayData.NewPlayerInputStream(TimeSpan.Zero);
 
-            for(int i=0;i<playerPositions.Count;i++)
+            for (int i = 0; i < playerPositions.Count; i++)
                 playerPositions[i] = position;
             for (int i = 0; i < playerVelocities.Count; i++)
                 playerVelocities[i] = Vector2.Zero;
-            
+
             for (int i = 0; i < sprites.Count; i++)
             {
                 playerStates[i] = PlayerState.Alive;
@@ -242,14 +242,14 @@ namespace Platformer
         /// we need to reverse our motion when the orientation is in the LandscapeRight orientation.
         /// </remarks>
         public virtual void Update(
-            GameTime gameTime, 
-            KeyboardState keyboardState, 
-            GamePadState gamePadState, 
+            GameTime gameTime,
+            KeyboardState keyboardState,
+            GamePadState gamePadState,
             DisplayOrientation orientation)
         {
-            
+
             GetInput(gameTime, keyboardState, gamePadState, orientation);
-            
+
             for (int i = 0; i < isOnGround.Count; i++)
             {
                 if (playerStates[i] == PlayerState.Alive && isOnGround[i])
@@ -263,14 +263,14 @@ namespace Platformer
                         playAnimationForSprite(i, idleAnimation);
                     }
                 }
-            }            
+            }
 
             ApplyPhysics(gameTime);
 
             // Clear input.
-            for(int i=0;i<movement.Count;i++)
+            for (int i = 0; i < movement.Count; i++)
                 movement[i] = 0.0f;
-            for(int i=0;i<isJumping.Count;i++)
+            for (int i = 0; i < isJumping.Count; i++)
                 isJumping[i] = false;
         }
 
@@ -343,10 +343,10 @@ namespace Platformer
                     continue;
 
                 Vector2 previousPosition = playerPositions[i];
-                
+
                 // Base velocity is a combination of horizontal movement control and
                 // acceleration downward due to gravity.
-                playerVelocities[i] = new Vector2(playerVelocities[i].X +  movement[i] * MoveAcceleration * elapsed,
+                playerVelocities[i] = new Vector2(playerVelocities[i].X + movement[i] * MoveAcceleration * elapsed,
                         MathHelper.Clamp(playerVelocities[i].Y + GravityAcceleration * elapsed, -MaxFallSpeed, MaxFallSpeed));
 
 
@@ -360,12 +360,12 @@ namespace Platformer
 
                 // Prevent the player from running faster than his top speed.            
                 playerVelocities[i] = new Vector2(MathHelper.Clamp(playerVelocities[i].X, -MaxMoveSpeed, MaxMoveSpeed), playerVelocities[i].Y);
-                
+
 
                 // Apply velocity.
                 playerPositions[i] = playerPositions[i] + playerVelocities[i] * elapsed;
                 playerPositions[i] = new Vector2((float)Math.Round(playerPositions[i].X), (float)Math.Round(playerPositions[i].Y));
-                
+
                 // If the player is now colliding with the level, separate them.
                 HandleCollisions(i);
 
@@ -374,7 +374,7 @@ namespace Platformer
                     playerVelocities[i] = new Vector2(0, playerVelocities[i].Y);
 
                 if (playerPositions[i].Y == previousPosition.Y)
-                    playerVelocities[i] = new Vector2(playerVelocities[i].X, 0);                
+                    playerVelocities[i] = new Vector2(playerVelocities[i].X, 0);
             }
         }
 
@@ -449,7 +449,7 @@ namespace Platformer
 
             // Reset flag to search for ground collision.
             isOnGround[i] = false;
-            
+
 
             // For each potentially colliding tile,
             for (int y = topTile; y <= bottomTile; ++y)
@@ -476,7 +476,7 @@ namespace Platformer
                                 {
                                     isOnGround[i] = true;
                                 }
-            
+
                                 // Ignore platforms, unless we are on the ground.
                                 if (collision == TileCollision.Impassable || isOnGround[i])
                                 {
@@ -538,7 +538,7 @@ namespace Platformer
         /// Draws the animated player.
         /// </summary>
         public virtual void Draw(GameTime gameTime, SpriteBatch spriteBatch)
-        {     
+        {
             // Draw player + ghosts
             for (int i = 0; i < PlayerPositions.Count; i++)
             {
@@ -557,8 +557,8 @@ namespace Platformer
                 sprites[i] = sprite;
 
             }
-            
-            
+
+
         }
     }
 }
