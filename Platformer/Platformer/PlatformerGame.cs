@@ -8,19 +8,18 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Net;
+using System.Text;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Input.Touch;
-using System.ComponentModel;
-using System.Net;
-using System.Text;
-using System.Threading;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 
 namespace Platformer
@@ -31,7 +30,7 @@ namespace Platformer
     public class PlatformerGame : Microsoft.Xna.Framework.Game
     {
         private const String LEVEL_URL = "http://paxdevdemo.com/levels.json";
-        private const String USER_NAME = "juliene@amazon.com";
+        private const String PLAYER_NAME = "juliene@amazon.com";
 
         // Resources for drawing.
         private GraphicsDeviceManager graphics;
@@ -172,11 +171,7 @@ namespace Platformer
             bool continuePressed =
                 keyboardState.IsKeyDown(Keys.Space) ||
                 gamePadState.IsButtonDown(Buttons.A);
-            bool saveReplayPressed = keyboardState.IsKeyDown(Keys.Y) ||
-                gamePadState.IsButtonDown(Buttons.Y);
-
-
-
+            
             // Perform the appropriate action to advance the game and
             // to get the player back to playing.
             if (!isLoading && !wasContinuePressed && continuePressed)
@@ -189,7 +184,7 @@ namespace Platformer
                 {
                     if (currentLevel.ReachedExit) {
                         if(currentLevel.Player.GhostData == null || currentLevel.Score > currentLevel.Player.GhostData.HighScore) {
-                            currentLevel.Player.ReplayData.SaveRecordedData(currentLevel.LevelData.Id);
+                            currentLevel.Player.ReplayData.SaveAndUploadRecordedDataAsync(currentLevel.LevelData.Id, PLAYER_NAME, null);
                         }
                         LoadNextLevel();
                     } else {
@@ -280,10 +275,15 @@ namespace Platformer
             }
             DrawShadowedString(hudFont, timeString, hudLocation, timeColor);
 
+            // draw level name
+            float levelNameLength = hudFont.MeasureString(currentLevel.LevelData.Name).X;
+            DrawShadowedString(hudFont, currentLevel.LevelData.Name, 
+                hudLocation + new Vector2(titleSafeArea.Width - levelNameLength - 5, 0.0f), Color.Yellow);
+
             // Draw score
             float timeHeight = hudFont.MeasureString(timeString).Y;
             String scoreString = "SCORE: " + currentLevel.Score.ToString();
-            if (currentLevel.Player.GhostData != null)
+            if (currentLevel.Player != null && currentLevel.Player.GhostData != null)
                 scoreString += " / " + currentLevel.Player.GhostData.HighScore.ToString();
             DrawShadowedString(hudFont, scoreString, hudLocation + new Vector2(0.0f, timeHeight * 1.2f), Color.Yellow);
            
@@ -300,7 +300,7 @@ namespace Platformer
                     status = loseOverlay;
                 }
             }
-            else if (!currentLevel.Player.IsAlive)
+            else if (currentLevel.Player != null && !currentLevel.Player.IsAlive)
             {
                 status = diedOverlay;
             }

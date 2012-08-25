@@ -9,16 +9,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Audio;
-using System.IO;
-using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Input;
-using System.Net;
-using System.ComponentModel;
-using System.Threading;
 
 namespace Platformer
 {
@@ -31,7 +27,6 @@ namespace Platformer
     {
         // loading
         public bool IsLoading { get; set; }
-        private BackgroundWorker loadingWorker;
         private Texture2D loadingOverlay;
 
         // Physical structure of the level.
@@ -100,35 +95,19 @@ namespace Platformer
 
         #region Loading
 
-        /// <summary>
-        /// Constructs a new level.
-        /// </summary>
-        /// <param name="serviceProvider">
-        /// The service provider that will be used to construct a ContentManager.
-        /// </param>
-        /// <param name="fileStream">
-        /// A stream containing the tile data.
-        /// </param>
-        public Level(IServiceProvider serviceProvider, Stream fileStream, int levelIndex)
-        {
-            
-            
-        }
-
         public Level(IServiceProvider serviceProvider, LevelData levelData)
         {
             LevelData = levelData;
 
             IsLoading = true;
-            loadingWorker = new BackgroundWorker();
-            loadingWorker.DoWork += new DoWorkEventHandler(loadingWorker_DoWork);
-            loadingWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(loadingWorker_RunWorkerCompleted);
+            
 
             // Create a new content manager to load content used just by this level.
             content = new ContentManager(serviceProvider, "Content");
 
             // Load background layer textures. For now, all levels must
             // use the same backgrounds and only use the left-most part of them.
+            // this is needed while loading so lead ahead
             layers = new Texture2D[3];
             for (int i = 0; i < layers.Length; ++i)
             {
@@ -137,28 +116,24 @@ namespace Platformer
                 layers[i] = Content.Load<Texture2D>("Backgrounds/Layer" + i + "_" + segmentIndex);
             }
 
-            // Load sounds.
-            exitReachedSound = Content.Load<SoundEffect>("Sounds/ExitReached");
+            // this is needed while loading...
             loadingOverlay = Content.Load<Texture2D>("Overlays/loading");
 
-            LoadTiles(levelData.Content);
+            // Load sounds.
+            exitReachedSound = Content.Load<SoundEffect>("Sounds/ExitReached");
 
-            loadingWorker.RunWorkerAsync();
-        }
-
-        void loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            IsLoading = false;
-        }
-
-        void loadingWorker_DoWork(object sender, DoWorkEventArgs e)
-        {
-            //replayData = ReplayData.LoadRecordedData(levelIndex);
+            // try to download and then load the replay data, asynchronously
+            ReplayData.DownloadAndLoadRecordedDataAsync(this.LevelData.Id, (sender, e) => {
+                replayData = (ReplayData)e.Result;
+                // load the level and instantiate the player with replay data
+                LoadTiles(LevelData.Content);
+                IsLoading = false;
+            });
 
             timeRemaining = TimeSpan.FromSeconds(25);
-
-            Thread.Sleep(5000);
         }
+
+
 
         /// <summary>
         /// Iterates over every tile in the structure file and loads its
@@ -643,42 +618,6 @@ namespace Platformer
 
         #endregion
 
-        #region Helper
-
-        private bool SaveFileFromURL(string url, string destinationFileName, int timeoutInSeconds)
-        {
-            // Create a web request to the URL
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Timeout = timeoutInSeconds * 1000;
-
-            // Get the web response
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-
-            // Make sure the response is valid
-            if (HttpStatusCode.OK == response.StatusCode)
-            {
-                // Open the response stream
-                using (Stream responseStream = response.GetResponseStream())
-                {
-                    // Open the destination file
-                    using (FileStream fileStream = new FileStream(destinationFileName, FileMode.OpenOrCreate, FileAccess.Write))
-                    {
-                        // Create a 4K buffer to chunk the file
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        // Read the chunk of the web response into the buffer
-                        while (0 < (bytesRead = responseStream.Read(buffer, 0, buffer.Length)))
-                        {
-                            // Write the chunk from the buffer to the file
-                            fileStream.Write(buffer, 0, bytesRead);
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
-        #endregion
 
         
     }

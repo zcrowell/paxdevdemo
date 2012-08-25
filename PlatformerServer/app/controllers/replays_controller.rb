@@ -1,5 +1,5 @@
 class ReplaysController < ApplicationController
-  http_basic_authenticate_with :name => "julien", :password => "secret", :except => [:index,:show]
+  http_basic_authenticate_with :name => "julien", :password => "secret", :except => [:index,:show,:best]
   skip_before_filter :verify_authenticity_token, :except => [:destroy, :edit, :update]
 
   # GET /replays
