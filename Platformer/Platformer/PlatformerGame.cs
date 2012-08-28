@@ -29,8 +29,13 @@ namespace Platformer
     /// </summary>
     public class PlatformerGame : Microsoft.Xna.Framework.Game
     {
-        private const String LEVEL_URL = "http://paxdevdemo.com/levels.json";
-        private const String PLAYER_NAME = "juliene@amazon.com";
+#if DEBUG
+        private const String LEVEL_URL = "http://plat-dev.paxdevdemo.com/levels.json";
+#else
+        private const String LEVEL_URL = "http://platformer.paxdevdemo.com/levels.json";
+#endif
+
+        private String PLAYER_NAME = "TestPlayer" + new Random().Next(10000).ToString("D4");
 
         // Resources for drawing.
         private GraphicsDeviceManager graphics;
@@ -146,7 +151,6 @@ namespace Platformer
 
             response.Close();
             readStream.Close();
-            Thread.Sleep(2000);
         }
 
         private void loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

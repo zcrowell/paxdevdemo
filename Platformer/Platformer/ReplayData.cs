@@ -15,7 +15,15 @@ namespace Platformer
     [JsonObject]
     class ReplayData
     {
-        private const String BEST_REPLAY_URL = "http://paxdevdemo.com/replays/best/{0}";
+#if DEBUG
+        private const String BEST_REPLAY_URL = "http://plat-dev.paxdevdemo.com/replays/best/{0}";
+        private const String REPLAY_UPLOAD_URL = "http://plat-dev.paxdevdemo.com/replays";
+#else
+        private const String BEST_REPLAY_URL = "http://platformer.paxdevdemo.com/replays/best/{0}";
+        private const String REPLAY_UPLOAD_URL = "http://platformer.paxdevdemo.com/replays";
+#endif
+
+        
 
 
         public int HighScore { get; set; }
@@ -128,7 +136,7 @@ namespace Platformer
             nvc.Add("replay[player]", playerName);
             nvc.Add("replay[score]", HighScore.ToString());
 
-            HttpUploadFile("http://paxdevdemo.com/replays",
+            HttpUploadFile(REPLAY_UPLOAD_URL,
                  fileName, "replay[data]", "application/octet-stream", nvc);
 
         }
