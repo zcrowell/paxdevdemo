@@ -1,6 +1,0 @@
-# Copy this file to config/initializers/aws.rb and replace configuration values below.
-AWS.config({:access_key_id => 'REPLACE_WITH_ACCESS_KEY', :secret_access_key => 'REPLACE_WITH_SECRET_KEY'})
-Abluka::Application.config.action_mailer.delivery_method = :amazon_ses
-Abluka::Application.config.email_from = 'REPLACE_WITH_SENDER_EMAIL'
-Abluka::Application.config.host = 'REPLACE_WITH_DOMAIN_NAME'
-
