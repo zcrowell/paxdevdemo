@@ -1,1 +1,1 @@
-cfn-create-stack apache-stack --capabilities CAPABILITY_IAM --parameters "DBPassword=mysqlpaswd;DBUsername=julien;KeyName=PaxDemoKP;AlarmEmail=paxdemo@gmail.com" --template-file MultiAZApacheCustomAMI.json --region=us-west-2
+cfn-create-stack preprod --capabilities CAPABILITY_IAM --parameters "DBPassword=mysqlpaswd;DBUsername=julien;KeyName=PaxDemoKP;AlarmEmail=paxdemo@gmail.com" --template-file MultiAZApacheCustomAMI.json --region=us-west-2
