@@ -1,0 +1,1 @@
+watch -d -n 10 cfn-describe-stack-events preprod --region=us-west-2
